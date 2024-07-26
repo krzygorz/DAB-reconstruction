@@ -1,0 +1,4 @@
+*.raw
+*.iq
+*.mat
+__pycache__/
