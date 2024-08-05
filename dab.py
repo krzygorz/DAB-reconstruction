@@ -90,11 +90,10 @@ def simulate_channel(samples, normalized_time_offset=0, freq_offset_hz=0):
     distorted = ifft(fft(distorted) * np.exp(2.0j*np.pi*np.arange(N)/N * normalized_time_offset))
     return distorted
 
-def fine_freq_corr(recv_symbol):
-    offsets = recv_symbol[:N_guard] * np.conj(recv_symbol[N_fft:])
+def estimate_fine_freq_offset(symbol):
+    offsets = symbol[:N_guard] * np.conj(symbol[N_fft:])
     avg_jump = np.angle(np.mean(offsets))/(N_fft)
     freq_offset = avg_jump/(2*np.pi) * fs
-
     #plt.figure()
     #plt.hist(np.angle(offsets)/N_fft /(2*np.pi) * fs, 200)
     #plt.title("fine AFC histogram")
@@ -102,17 +101,31 @@ def fine_freq_corr(recv_symbol):
     #plt.ylabel("sample count")
     #plt.axvline(freq_offset, color='red', alpha=0.5, linewidth=1)
     #plt.show()
-
     return freq_offset
 
 class FreqSync:
-    def __init__(self, coarse_offset):
+    def __init__(self, coarse_offset, alpha=0.01):
         self.freq_offset = coarse_offset
+        self.alpha = alpha
         self.phase_counter = 0
-    def __call__(self, samples):
-        t = np.arange(0,len(samples)) + phase_counter
-        self.phase_counter += len(samples)
-        return symbol * np.exp(2.0j * np.pi * t * self.freq_offset / fs)
+        self.history = []
+    def __call__(self, symbol):
+        t = np.arange(0,N_symbol) + self.phase_counter
+        corrected = symbol*np.exp(2.0j * np.pi * t * self.freq_offset / fs)
+
+        extra_freq_offset = estimate_fine_freq_offset(corrected)
+        if self.phase_counter == 0:
+            print("cool", self.freq_offset)
+            self.freq_offset += extra_freq_offset
+            print("cool", self.freq_offset)
+        else:
+            self.freq_offset += self.alpha*extra_freq_offset
+        self.history.append(self.freq_offset)
+
+        symbol *= np.exp(2.0j * np.pi * t * self.freq_offset / fs)
+
+        self.phase_counter += N_symbol
+        return symbol
  
 class DQPSK_demod:
     def __init__(self, sync_carriers):
@@ -157,8 +170,9 @@ def superfine_time_sync(data_carriers):
 def normalize_power(x):
     return x / np.sqrt(np.mean(np.abs(x)**2))
 
-def demod_frame(frame):
+def demod_frame(frame, freqsync):
     recv_sync_symbol = frame[sync_symbol_start:sync_symbol_end]
+    recv_sync_symbol = freqsync(recv_sync_symbol)
     recv_sync_carriers = get_data_carriers(recv_sync_symbol)
 
     plt.figure()
@@ -172,36 +186,23 @@ def demod_frame(frame):
     
     soft = np.zeros((symbols_per_frame-1, N_carriers), dtype="complex128")
     
-    offsets = np.zeros(symbols_per_frame-1)
-    offsets2 = np.zeros(symbols_per_frame-1)
-    offset_sum = 0
     for n, symbol in enumerate(data_symbols):
-        symbol_offset_est = fine_freq_corr(symbol)
-        offset_sum += symbol_offset_est
-        est_offset = offset_sum/(n+1)
-    
-        t = np.arange(0,N_symbol) + N_symbol*(n+1)
-        symbol *= np.exp(2.0j * np.pi * t * est_offset / fs)
-    
-        offsets[n] = symbol_offset_est
-        offsets2[n] = est_offset
-    
+        symbol = freqsync(symbol)
         data_carriers = get_data_carriers(symbol)
         data_diff = demod(data_carriers)
         soft[n,:] = data_diff
     #plt.figure()
     #plt.plot(demod.drift)
     plt.figure()
-    plt.plot(offsets, 'o')
-    plt.plot(offsets2)
+    plt.plot(freqsync.history)
 
     return soft
 
 ###################################################
 
 #remaining_samples = np.fromfile('dab_short.iq', np.complex64)
-remaining_samples = np.fromfile('DAB+_20240712_105527Z_2048000_176640000_float32_iq.raw', np.complex64)
-#from lofarsig import ref_resampled as remaining_samples
+#remaining_samples = np.fromfile('DAB+_20240712_105527Z_2048000_176640000_float32_iq.raw', np.complex64)
+from lofarsig import ref_resampled as remaining_samples
 
 ###################################################
 
@@ -218,21 +219,15 @@ sync_symbol_start = N_null
 sync_symbol_end = N_null+N_symbol
 recv_sync_symbol = frame[sync_symbol_start:sync_symbol_end]
 
-fine_freq_offset = fine_freq_corr(recv_sync_symbol)
-print(f"fine AFC {fine_freq_offset} Hz")
+freqsync = FreqSync(coarse_freq_offset)
 
-freq_offset = coarse_freq_offset + fine_freq_offset
-
-t_frame = np.arange(N_frame)
-t_remaining = np.arange(len(remaining_samples)) + N_frame
-frame *= np.exp(2.0j * np.pi * t_frame * freq_offset / fs)
-remaining_samples *= np.exp(2.0j * np.pi * t_remaining * freq_offset / fs)
-
-soft = demod_frame(frame)
+soft = demod_frame(frame, freqsync)
 
 plt.figure()
 k=np.arange(0,N_carriers,10)
-iq_scatter = plt.scatter(soft[:,k].real, soft[:,k].imag, c=np.tile(k, symbols_per_frame-1))
+#c = np.broadcast_to(np.arange(symbols_per_frame-1)[:, np.newaxis], (symbols_per_frame-1,len(k)))
+c = np.tile(k, symbols_per_frame-1)
+iq_scatter = plt.scatter(soft[:,k].real, soft[:,k].imag, c=c)
 cbar = plt.colorbar(iq_scatter)
 cbar.set_label('carrier no.')
 plt.title("data differential constellation")
