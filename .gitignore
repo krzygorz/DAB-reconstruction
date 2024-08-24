@@ -2,3 +2,6 @@
 *.iq
 *.mat
 __pycache__/
+data/
+*.svg
+*.png
