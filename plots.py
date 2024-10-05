@@ -1,5 +1,5 @@
 from dab_parameters import (
-    fs, N_carriers, N_frame, N_symbol,
+    fs, N_carriers, N_frame, N_symbol, N_guard,
     symbols_per_frame, zero_carrier_idx, carrier_indices
 )
 import matplotlib.pyplot as plt
@@ -8,9 +8,10 @@ from numpy import pi
 from scipy.stats import norm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
-def plot_timesync():
+def plot_timesync(timesync):
     plt.figure()
-    t = np.arange(n_frames*(symbols_per_frame-1))*N_symbol/fs
+    t = np.arange(len(timesync.history)) * N_symbol/fs
+    #t = np.arange(n_frames*(symbols_per_frame-1))*N_symbol/fs
     plt.plot(t,timesync.history)
     plt.title("time drift (approximate)")
     plt.xlabel("time [s]")
@@ -18,18 +19,17 @@ def plot_timesync():
 
 def plot_frame_diff_constellation(soft):
     plt.figure()
-    k=np.arange(0,N_carriers,10)
+    k=np.arange(0,N_carriers,1)
     #c = np.broadcast_to(np.arange(symbols_per_frame-1)[:, np.newaxis], (symbols_per_frame-1,len(k)))
     c = np.tile(k, symbols_per_frame-1)
-    iq_scatter = plt.scatter(soft[:,k].real, soft[:,k].imag, c=c)
+    iq_scatter = plt.scatter(soft[:,k].real, soft[:,k].imag, c=c, s=1)
     cbar = plt.colorbar(iq_scatter)
     cbar.set_label('carrier no.')
     plt.title("data differential constellation")
 
 def plot_phase_error_histogram(soft):
     plt.figure()
-    without_zero = np.delete(soft, zero_carrier_idx, axis=1).flatten()
-    phase_err = np.angle(without_zero) % (pi/2) - pi/4
+    phase_err = np.angle(soft.flatten()) % (pi/2) - pi/4
     n_bins = 256
     _, bins, _ = plt.hist(phase_err, n_bins, density=True, label="histogram", log=True)
     mu,stddev = norm.fit(phase_err)
@@ -42,16 +42,15 @@ def plot_phase_error_histogram(soft):
     plt.legend()
     fractions = np.array([-1/4, -1/8, 0, 1/4, 1/8])
     tick_values = fractions * np.pi
-    tick_labels = [f"${x} \pi$" for x in fractions]
+    tick_labels = [f"${x} \\pi$" for x in fractions]
     plt.xticks(tick_values, tick_labels)
 
 def ladder_plot(soft):
     fig, ax = plt.subplots()
-    num_frames, _ = soft.shape
-    print("num_frames", num_frames)
+    num_symbols, _ = soft.shape
     y = np.angle(soft).T
     x = np.broadcast_to(carrier_indices[:, np.newaxis], y.shape)
-    c = np.broadcast_to(np.arange(0,num_frames)[np.newaxis,:], y.shape)
+    c = np.broadcast_to(np.arange(0,num_symbols)[np.newaxis,:], y.shape)
     scatterplot = ax.scatter(x,y, s=1, c=c, cmap='Reds')
     ax.set_xlim(-N_carriers//2, N_carriers//2)
     ax.set_ylim(-pi,pi)
@@ -61,16 +60,18 @@ def ladder_plot(soft):
     ax.axhline(0, color='black', linestyle='--')
     ax.axhline(pi/2, color='black', linestyle='--')
     plt.title("")
-    #divider   = make_axes_locatable(ax)
-    #ax_stddev = divider.append_axes("top", 0.3, pad=0.1, sharex=ax)
-    #stddev =np.std(np.angle(soft)%(pi/2)-pi/4,axis=0) 
-    #ax_stddev.plot(carrier_indices, stddev)
-    #ax_stddev.set_ylim(0, np.max(np.delete(stddev,zero_carrier_idx)))
-    #ax_stddev.xaxis.set_tick_params(labelbottom=False)
-    #ax_cbar = divider.append_axes("right", 0.2, pad=0.1)
-    #cbar = fig.colorbar(scatterplot, cax=ax_cbar)
-    cbar = fig.colorbar(scatterplot)
-    cbar.set_label('frame no.')
+    divider   = make_axes_locatable(ax)
+    ax_stddev = divider.append_axes("top", 0.3, pad=0.1, sharex=ax)
+    ax_stddev.set_ylabel("amplitude")
+    # stddev =np.std(np.angle(soft)%(pi/2)-pi/4,axis=0) 
+    amplitude = np.mean(np.abs(soft), axis=0)
+    ax_stddev.plot(carrier_indices, amplitude)
+    ax_stddev.set_ylim(0, np.max(amplitude))
+    ax_stddev.xaxis.set_tick_params(labelbottom=False)
+    ax_cbar = divider.append_axes("right", 0.2, pad=0.1)
+    cbar = fig.colorbar(scatterplot, cax=ax_cbar)
+    # cbar = fig.colorbar(scatterplot)
+    cbar.set_label('symbol no.')
 
 def plot_freqsync_history(freqsync):
     plt.figure()
@@ -92,20 +93,50 @@ def plot_regen_error(recv,regen):
     zeros = (abs(recv) < eps) | (abs(regen) < eps)
     angles = np.angle(np.conj(recv)*regen)
     angles[zeros] = np.nan
-    s = slice(0,len(angles),50)
+    s = slice(0,len(angles),10)
     # ax2.plot(angles)
     ax2.scatter(np.arange(len(angles))[s], angles[s], c=abs(regen)[s], s=1)
     ax2.set_title("phase error")
     
-    ax3.plot(abs(recv)-abs(regen))
-    ax3r = ax3.twinx()
-    ax3r.plot(np.arange(len(recv))[~zeros], abs(recv[~zeros])/abs(regen[~zeros]), color='orange')
-    fig.tight_layout()
-
-def plot_coherent_error(recv,regen):
-    plt.figure()
     err = abs(recv)-abs(regen)
-    plt.plot(err)
+    ax3.plot(err)
     winsize = N_symbol
     power = np.correlate(err**2, np.ones(winsize)/(winsize), mode='valid')
-    plt.plot(np.sqrt(power))
+    ax3.plot(np.sqrt(power))
+    fig.tight_layout()
+
+def plot_regen_histogram(recv,regen):
+    plt.figure()
+    hist_max = 3
+    d1 = np.r_[regen.real, regen.imag]
+    d2 = np.r_[recv.real, recv.imag]
+
+    H, xedges, yedges = np.histogram2d(
+        # abs(recv), abs(regen),
+        # range=[[0,hist_max],[0,hist_max]],
+    
+        # recv.real, regen.real,
+        d1, d2,
+        # range=[[-hist_max,hist_max],[-hist_max,hist_max]],
+        bins=64,
+    )
+    # regen is axis 0
+    # recv  is axis 1
+    H /= np.max(H, axis=0)
+    # plt.imshow(H.T, interpolation='nearest', origin='lower',
+    #         extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]])
+    plt.pcolormesh(xedges, yedges, H.T)
+    plt.xlim(xedges[0], xedges[-1])
+    plt.ylim(yedges[0], yedges[-1])
+
+    means = np.zeros(len(xedges)-1)
+    for i in range(0,len(xedges)-1):
+        e1 = xedges[i]
+        e2 = xedges[i+1]
+        mask = (e1 <= d1) & (d1 < e2)
+        means[i] = np.mean(d2[mask])
+
+    plt.plot(xedges[:-1], means)
+    plt.axline((0,0), slope=1, color='red', alpha=0.5)#linestyle='--')
+    # plt.xlabel('regen amplitude')
+    # plt.ylabel('recv amplitude')

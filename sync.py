@@ -13,7 +13,7 @@ def freq_shift(samples, freq_offset):
     return samples * np.exp(2.0j*pi*np.arange(len(samples))/fs * freq_offset)
 
 coarse_time_sync_margin = N_null//2
-max_freq_offset = 90e3
+max_freq_offset = 200e3
 def find_preamble_offset(samples):
     df = np.arange(-max_freq_offset,max_freq_offset+carrier_spacing,carrier_spacing)
     #correlations = np.zeros((len(df), len(samples)-N_fft+1))

@@ -5,6 +5,7 @@ from scipy import signal
 print("loading reference signal...")
 mat_contents = scipy.io.loadmat("data/Signals_13_49_34_PIA.mat")
 ref_original = mat_contents['ref_signal'].flatten()
+# ref_original = mat_contents['sur_signal_x'].flatten()
 
 fs_beam = 200e6/1024 * 10
 fs_dab = 2048000
