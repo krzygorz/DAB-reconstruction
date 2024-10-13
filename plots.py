@@ -8,12 +8,18 @@ from numpy import pi
 from scipy.stats import norm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+# def plot_timesync(timesync):
+#     plt.figure()
+#     t = np.arange(len(timesync.history)) * N_symbol/fs
+#     #t = np.arange(n_frames*(symbols_per_frame-1))*N_symbol/fs
+#     plt.plot(t,timesync.history)
+#     plt.title("time drift (approximate)")
+#     plt.xlabel("time [s]")
+#     plt.ylabel("drift [samples]")
 def plot_timesync(timesync):
     plt.figure()
-    t = np.arange(len(timesync.history)) * N_symbol/fs
-    #t = np.arange(n_frames*(symbols_per_frame-1))*N_symbol/fs
-    plt.plot(t,timesync.history)
-    plt.title("time drift (approximate)")
+    plt.plot(timesync.history_n, timesync.history_offset)
+    plt.title("time drift")
     plt.xlabel("time [s]")
     plt.ylabel("drift [samples]")
 

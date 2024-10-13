@@ -5,3 +5,4 @@ __pycache__/
 data/
 *.svg
 *.png
+C/build

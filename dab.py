@@ -6,6 +6,7 @@ from time import time
 
 from demod import DabDemod, modulate_frame
 from sync import freq_shift, SubsampleTimeSync
+from coherentsync import DDTimeSync
 from plots import (
     plot_frame_diff_constellation,
     plot_phase_error_histogram,
@@ -48,8 +49,8 @@ full_signal = normalize_power(full_signal)
 
 remaining_samples = full_signal
 
-n_frames = len(remaining_samples)//N_frame - 1
-# n_frames = 1
+# n_frames = len(remaining_samples)//N_frame - 1
+n_frames = 10
 print(f"processing {n_frames} frames")
 
 demod = DabDemod()
@@ -104,7 +105,8 @@ demod = DabDemod()
 # exit()
 #######################################
 
-timesync = SubsampleTimeSync()
+# timesync = SubsampleTimeSync()
+timesync = DDTimeSync(max_offset=1, N_taps=15, N_filters=16)
 t_start = time()
 recv_frames = []
 regen_frames = []
@@ -113,8 +115,12 @@ for i in range(0,n_frames):
     recv_frames.append(demod.last_frame)
     regen = modulate_frame(hard1)
     regen_frames.append(regen)
-    for symbol_data_carriers in soft1:
-       timesync(symbol_data_carriers)
+    # for symbol_data_carriers in soft1:
+    #    timesync(symbol_data_carriers)
+    symbols_recv = demod.last_frame[N_null:].reshape((symbols_per_frame,-1))
+    symbols_regen = regen[N_null:].reshape((symbols_per_frame,-1))
+    for s_rec, s_reg in zip(symbols_recv, symbols_regen):
+        timesync(s_rec, s_reg)
 t_stop = time()
 signal_duration = n_frames*N_frame/fs
 processing_duration = t_stop-t_start

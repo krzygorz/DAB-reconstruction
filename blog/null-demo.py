@@ -8,6 +8,7 @@ plt.style.use('grayscale')
 
 plt.figure(figsize=(8, 4), dpi=200)
 samples = np.fromfile('DAB+_20240712_105527Z_2048000_176640000_float32_iq.raw', np.complex64)
+# samples = np.fromfile('dab_short.iq', np.complex64)
 plt.plot(np.abs(samples[:N_frame]), '.', ms=1)
 plt.xlim(0,N_frame)
 plt.ylim(0,1)
