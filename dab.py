@@ -114,13 +114,13 @@ for i in range(0,n_frames):
     soft1, hard1, remaining_samples = demod(remaining_samples)
     recv_frames.append(demod.last_frame)
     regen = modulate_frame(hard1)
-    regen_frames.append(regen)
     # for symbol_data_carriers in soft1:
     #    timesync(symbol_data_carriers)
     symbols_recv = demod.last_frame[N_null:].reshape((symbols_per_frame,-1))
     symbols_regen = regen[N_null:].reshape((symbols_per_frame,-1))
     for s_rec, s_reg in zip(symbols_recv, symbols_regen):
-        timesync(s_rec, s_reg)
+        regen_sync = timesync(s_rec, s_reg)
+        regen_frames.append(regen_sync)
 t_stop = time()
 signal_duration = n_frames*N_frame/fs
 processing_duration = t_stop-t_start

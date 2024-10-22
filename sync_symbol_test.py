@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from dab_parameters import ref_sync_symbol, ref_sync_carriers, N_null, N_symbol, N_fft
+from dab_parameters import ref_sync_symbol, ref_sync_carriers, N_null, N_symbol, N_fft, N_frame
 
 def normalize_power(x):
     return x / np.sqrt(np.mean(np.abs(x)**2))
@@ -26,8 +26,13 @@ py_sym = normalize_power(py_sym)
 # py_carriers *= N_fft
 # rec_sym /= N_fft
 
-#plt.plot(c_sym.real, 'o', label="C")
-#plt.plot(rec_sym.real, '-', label="recording")
-plt.plot(abs(py_sym - rec_sym))
-# plt.legend()
+plt.plot(c_sym.real, label="C")
+# plt.plot(rec_sym.real, '-', label="recording")
+#plt.plot(abs(py_sym - rec_sym))
+plt.figure()
+plt.plot(np.abs(np.correlate(samples[:N_frame], c_sym, mode='valid')), label='C')
+plt.plot(np.abs(np.correlate(samples[:N_frame], py_sym, mode='valid')), label='py')
+plt.figure()
+plt.plot(np.abs(np.correlate(c_sym, py_sym, mode='valid')), label='C')
+plt.legend()
 plt.show()

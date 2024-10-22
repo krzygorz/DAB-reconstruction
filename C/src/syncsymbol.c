@@ -5,6 +5,7 @@
 #include <liquid/liquid.h>
 #include "dab.h"
 #include "syncsymbol.h"
+#include <fftw3.h>
 
 // Table 23: Relation between the indices i, k' and n and the carrier index k for transmission mode I
 static int table_23[48][4] = {
@@ -110,27 +111,32 @@ void generate_sync_symbol_carriers(float complex *out){
 }
 
 void generate_sync_symbol_with_gi(float complex *out){
-    float complex *fft_in  = fft_malloc(N_FFT*sizeof(float complex));
-    float complex *fft_out = fft_malloc(N_FFT*sizeof(float complex));
+    float complex *fft_in  = fftwf_malloc(N_FFT*sizeof(float complex));
+    float complex *fft_out = fftwf_malloc(N_FFT*sizeof(float complex));
     generate_sync_symbol_carriers(fft_in);
 
-    fftplan plan = fft_create_plan(N_FFT, fft_in, fft_out, LIQUID_FFT_BACKWARD, 0);
-    fft_execute(plan);
-    fft_destroy_plan(plan);
-
+    fftwf_plan plan = fftwf_plan_dft_1d(N_FFT, fft_in, fft_out, FFTW_BACKWARD, FFTW_ESTIMATE);
+    fftwf_execute(plan);
+    fftwf_destroy_plan(plan);
     // copy guard interval
     memcpy(out, fft_out + N_FFT - T_GUARD, T_GUARD*sizeof(float complex));
     // copy the whole symbol, after the guard interval
     memcpy(out+T_GUARD, fft_out, N_FFT*sizeof(float complex));
-    fft_free(fft_in);
-    fft_free(fft_out);
+    fftwf_free(fft_in);
+    fftwf_free(fft_out);
+
+    // float complex *fft_in  = fft_malloc(N_FFT*sizeof(float complex));
+    // float complex *fft_out = fft_malloc(N_FFT*sizeof(float complex));
+    // generate_sync_symbol_carriers(fft_in);
+    //
+    // fftplan plan = fft_create_plan(N_FFT, fft_in, fft_out, LIQUID_FFT_BACKWARD, 0);
+    // fft_execute(plan);
+    // fft_destroy_plan(plan);
+    //
+    // // copy guard interval
+    // memcpy(out, fft_out + N_FFT - T_GUARD, T_GUARD*sizeof(float complex));
+    // // copy the whole symbol, after the guard interval
+    // memcpy(out+T_GUARD, fft_out, N_FFT*sizeof(float complex));
+    // fft_free(fft_in);
+    // fft_free(fft_out);
 }
-// ref_sync_carriers = np.zeros(N_fft, dtype="complex128")
-// for k in range(-N_carriers//2,N_carriers//2+1):
-//    idx = k if k >=0 else N_fft+k
-//    if k == 0:
-//        ref_sync_carriers[idx] = 0
-//        continue
-//    k1,_, i, n = table_23[(table_23[:,0] <= k) & (k <= table_23[:,1])][0]
-//    phase = np.pi/2 * (h_table[i, k-k1] + n)
-//    ref_sync_carriers[idx] = np.exp(1.0j * phase)

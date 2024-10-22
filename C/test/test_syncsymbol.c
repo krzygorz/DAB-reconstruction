@@ -23,6 +23,7 @@ void test_sync_symbol_time_domain() {
     }
     float complex buf [BUF_LEN];
     int n = 0;
+    float max_error = 0;
     bool error_occurred = false;
     while(!feof(f_in)){
         int rc = fread(buf, sizeof(float complex), BUF_LEN, f_in);
@@ -34,6 +35,8 @@ void test_sync_symbol_time_domain() {
             float complex ref_sample = buf[i] * N_FFT; //numpy FFT uses different scaling than FFTW
             float complex gen_sample = syncsymbol[n];
             float error = cabs(ref_sample - gen_sample);
+            if (error > max_error)
+                max_error = error;
             if(error > TIME_DOMAIN_TOLERANCE){
                 printf("sample %d doesn't match reference\n", n);
                 printf("generated: %f + %fi\n", creal(gen_sample), cimag(gen_sample));
@@ -43,6 +46,7 @@ void test_sync_symbol_time_domain() {
             }
         }
     }
+    printf("time domain max error: %g\n", max_error);
     fclose(f_in);
     if(error_occurred){
         exit(1);
@@ -61,6 +65,7 @@ void test_sync_symbol_carriers() {
     float complex buf [BUF_LEN];
     int n = 0;
     bool error_occurred = false;
+    float max_error = 0;
     while(!feof(f_in)){
         int rc = fread(buf, sizeof(float complex), BUF_LEN, f_in);
         for(int i=0; i<rc; i++, n++){
@@ -71,6 +76,8 @@ void test_sync_symbol_carriers() {
             float complex ref_sample = buf[i];
             float complex gen_sample = carriers[n];
             float error = cabs(ref_sample - gen_sample);
+            if (error > max_error)
+                max_error = error;
             if(error > CARRIER_TOLERANCE){
                 printf("carrier %d doesn't match reference\n", n);
                 printf("generated: %f + %fi\n", creal(gen_sample), cimag(gen_sample));
@@ -80,6 +87,7 @@ void test_sync_symbol_carriers() {
             }
         }
     }
+    printf("carrier max error: %g\n", max_error);
     fclose(f_in);
     if(error_occurred){
         exit(1);
