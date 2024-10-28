@@ -14,10 +14,10 @@ def beam_center_freq(mode,beamlet1, beamlet2):
         raise Exception(f"mode {mode} not implemented")
     return lower_edge + (beamlet2+beamlet1)/2 * fs_beamlet
 
-def load_lofar_signal(mat_file_path):
+def load_lofar_signal(mat_file_path, variable='ref_signal'):
     print("loading reference signal...")
     mat_contents = scipy.io.loadmat(mat_file_path)
-    ref_original = mat_contents['ref_signal'].flatten()
+    ref_original = mat_contents[variable].flatten()
     print("resampling ...")
     ref_resampled  = signal.resample_poly(ref_original, 2**14, 5**6)
     print("done")
@@ -32,7 +32,7 @@ def load_lofar_signal(mat_file_path):
 #ref_resampled = signal.resample_poly(tmp, 2**7, 5**2)
 #print("done")
 
-def save_lofar_signal(out_path, sig):
+def save_lofar_signal(out_path, sig, variable='reconstructed'):
     out_resampled = signal.resample_poly(sig, 5**6, 2**14)
-    scipy.io.savemat(out_path, {"reconstructed": out_resampled})
+    scipy.io.savemat(out_path, {variable: out_resampled})
     # np.save("data/reconstructed_PIA.npy", sig)
