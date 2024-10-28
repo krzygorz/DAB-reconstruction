@@ -70,7 +70,8 @@ class DDTimeSync:
         self.history_offset.append(self.time_offset)
         fir_input = np.concatenate([self.fir_state, sig])
         self.fir_state = sig[-self.N_taps+1:]
-        return fir_delay(fir_input, self.time_offset, self.N_taps)
+        delayed = fir_delay(fir_input, self.time_offset, self.N_taps)
+        return delayed
 
 # from scipy.interpolate import CubicSpline
 # import matplotlib.pyplot as plt

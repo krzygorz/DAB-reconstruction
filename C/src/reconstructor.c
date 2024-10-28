@@ -1,6 +1,0 @@
-typedef enum {
-    DAB_CTRL_NULLSEARCH,
-    DAB_CTRL_SYNCSEARCH,
-    DAB_CTRL_LOCKED,
-}
-

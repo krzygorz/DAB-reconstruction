@@ -93,6 +93,7 @@ def plot_regen_error(recv,regen):
     ax1, ax2, ax3 = fig.subplots(3, sharex=True)
     ax1.plot(abs(recv), '-o', label="recv")
     ax1.plot(abs(regen), '-+', label="regen")
+    ax1.set_title("signal amplitude")
     ax1.legend()
     
     eps = 1e-7
@@ -104,11 +105,14 @@ def plot_regen_error(recv,regen):
     ax2.scatter(np.arange(len(angles))[s], angles[s], c=abs(regen)[s], s=1)
     ax2.set_title("phase error")
     
-    err = abs(recv)-abs(regen)
-    ax3.plot(err)
+    # err = abs(recv)-abs(regen)
+    err = abs(recv-regen)
+    ax3.plot(err, label="instantaneous")
     winsize = N_symbol
     power = np.correlate(err**2, np.ones(winsize)/(winsize), mode='valid')
-    ax3.plot(np.sqrt(power))
+    ax3.plot(np.sqrt(power), label="averaged")
+    ax3.set_title("|recv(t)-regen(t)|")
+    ax3.legend()
     fig.tight_layout()
 
 def plot_regen_histogram(recv,regen):
@@ -120,7 +124,6 @@ def plot_regen_histogram(recv,regen):
     H, xedges, yedges = np.histogram2d(
         # abs(recv), abs(regen),
         # range=[[0,hist_max],[0,hist_max]],
-    
         # recv.real, regen.real,
         d1, d2,
         # range=[[-hist_max,hist_max],[-hist_max,hist_max]],
@@ -142,7 +145,22 @@ def plot_regen_histogram(recv,regen):
         mask = (e1 <= d1) & (d1 < e2)
         means[i] = np.mean(d2[mask])
 
-    plt.plot(xedges[:-1], means)
+    # plt.plot(xedges[:-1], means)
     plt.axline((0,0), slope=1, color='red', alpha=0.5)#linestyle='--')
-    # plt.xlabel('regen amplitude')
-    # plt.ylabel('recv amplitude')
+    plt.xlabel('regen amplitude')
+    plt.ylabel('recv amplitude')
+    plt.title('regen linearity histogram')
+
+def plot_regen_spectrum(recv, regen):
+    plt.figure()
+    plt.psd(recv,  label="recv")
+    plt.psd(regen, label="regen")
+    plt.legend()
+
+def plot_regen_error_histogram(recv,regen):
+    plt.figure()
+    err = recv-regen
+    plt.hist2d(err.real, err.imag, bins=64)
+    plt.title("regen error histogram")
+    plt.xlabel("real")
+    plt.ylabel("imag")

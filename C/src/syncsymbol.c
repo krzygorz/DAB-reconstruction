@@ -124,19 +124,4 @@ void generate_sync_symbol_with_gi(float complex *out){
     memcpy(out+T_GUARD, fft_out, N_FFT*sizeof(float complex));
     fftwf_free(fft_in);
     fftwf_free(fft_out);
-
-    // float complex *fft_in  = fft_malloc(N_FFT*sizeof(float complex));
-    // float complex *fft_out = fft_malloc(N_FFT*sizeof(float complex));
-    // generate_sync_symbol_carriers(fft_in);
-    //
-    // fftplan plan = fft_create_plan(N_FFT, fft_in, fft_out, LIQUID_FFT_BACKWARD, 0);
-    // fft_execute(plan);
-    // fft_destroy_plan(plan);
-    //
-    // // copy guard interval
-    // memcpy(out, fft_out + N_FFT - T_GUARD, T_GUARD*sizeof(float complex));
-    // // copy the whole symbol, after the guard interval
-    // memcpy(out+T_GUARD, fft_out, N_FFT*sizeof(float complex));
-    // fft_free(fft_in);
-    // fft_free(fft_out);
 }
