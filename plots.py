@@ -87,6 +87,7 @@ def plot_freqsync_history(freqsync):
     plt.title("frequency offset estimate")
     plt.ylabel("freq. offset [Hz]")
     plt.xlabel("time [s]")
+    plt.gca().ticklabel_format(useOffset=False)
 
 def plot_regen_error(recv,regen):
     fig = plt.figure()
