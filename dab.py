@@ -27,7 +27,8 @@ from dsp_utils import normalize_power, delay
 
 data_dir = 'data/'
 out_file = data_dir+"regen.mat"
-full_signal = load_lofar_signal("data/Signals_13_49_34_OLS.mat")
+n_beamlets = 10
+full_signal = load_lofar_signal("data/Signals_13_49_34_OLS.mat", n_beamlets);
 # full_signal = np.fromfile(data_dir+'dab_short.iq', np.complex64)
 # full_signal = np.fromfile(data_dir+'DAB+_20240712_105527Z_2048000_176640000_float32_iq.raw', np.complex64)
 # from lofarsig import ref_resampled as full_signal
@@ -105,7 +106,7 @@ plot_regen_spectrum(recv, regen)
 
 regen = normalize_power(regen)
 regen = np.concatenate([np.zeros(demod.initial_offset), regen])
-save_lofar_signal(out_file, regen)
+save_lofar_signal(out_file, regen, n_beamlets)
 
 if fine_sync:
     plot_timesync(timesync)
