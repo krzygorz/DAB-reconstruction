@@ -6,3 +6,4 @@ data/
 *.svg
 *.png
 C/build
+C/test/data/
